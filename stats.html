@@ -7,7 +7,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-  import { getFirestore, collection, getDocs, orderBy, query } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+  import { getFirestore, collection, getDocs, orderBy, query, doc, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
   import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 
   const firebaseConfig = {
@@ -36,6 +36,12 @@
       surveys: surveys.docs.map(d => ({id:d.id, ...d.data()})),
       contacts: contacts.docs.map(d => ({id:d.id, ...d.data()}))
     };
+  };
+  window.saveContactStatus = async function(id, status){
+    try {
+      await updateDoc(doc(db, "contactRequests", id), { status });
+      return true;
+    } catch(err){ console.error("Kunne ikke oppdatere status:", err); return false; }
   };
   onAuthStateChanged(auth, (user) => {
     if(user){
@@ -154,6 +160,28 @@
   .contact-links{margin-top:12px; display:flex; gap:14px; font-size:13px; font-family:system-ui;}
   .contact-links a{color:var(--orange); text-decoration:none;}
   .contact-links a:hover{text-decoration:underline;}
+
+  .status-row{
+    display:flex; align-items:center; gap:8px; margin-top:14px; padding-top:14px;
+    border-top:1px solid var(--border);
+  }
+  .status-label{
+    font-size:11px; letter-spacing:1.5px; text-transform:uppercase; color:var(--muted-2);
+    font-weight:700; margin-right:4px;
+  }
+  .status-btn{
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px;
+    letter-spacing:1px; text-transform:uppercase; cursor:pointer;
+    background:transparent; border:1px solid var(--border); border-radius:6px;
+    padding:6px 12px; color:var(--muted);
+  }
+  .status-btn:hover{color:var(--text); border-color:var(--muted-2);}
+  .status-btn.active.ny{background:rgba(255,180,80,0.15); border-color:#ffb450; color:#ffb450;}
+  .status-btn.active.kontaktet{background:rgba(255,122,61,0.15); border-color:var(--orange); color:var(--orange);}
+  .status-btn.active.ferdig{background:rgba(80,180,120,0.15); border-color:#50b478; color:#50b478;}
+  .contact-card.status-ny{border-left:3px solid #ffb450;}
+  .contact-card.status-kontaktet{border-left:3px solid var(--orange);}
+  .contact-card.status-ferdig{border-left:3px solid #50b478; opacity:0.75;}
 
   @media(max-width:760px){
     .kpi-row{grid-template-columns:1fr 1fr;}
@@ -427,39 +455,14 @@ window.renderDashboard = async function(){
   }
 
   // ---- Contact section
-  const total = allContacts.length;
-  const weekCount = allContacts.filter(c => inRange(c, weekAgo)).length;
   const byType = {};
   allContacts.forEach(c => byType[c.type || "Ukjent"] = (byType[c.type || "Ukjent"]||0) + 1);
-  const investors = byType["Investor"] || 0;
-  const pilots = byType["Interessert i pilot/kunde"] || 0;
 
-  document.getElementById("contact-kpi-row").innerHTML = `
-    <div class="kpi">
-      <div class="kpi-label">Totalt</div>
-      <div class="kpi-value"><span>${total}</span></div>
-      <div class="kpi-sub">Alle henvendelser</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Siste 7 dager</div>
-      <div class="kpi-value"><span>${weekCount}</span></div>
-      <div class="kpi-sub">Nye denne uken</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Investorer</div>
-      <div class="kpi-value"><span>${investors}</span></div>
-      <div class="kpi-sub">Investor-henvendelser</div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-label">Pilotkunder</div>
-      <div class="kpi-value"><span>${pilots}</span></div>
-      <div class="kpi-sub">Pilot/kunde-interesse</div>
-    </div>
-  `;
+  updateContactKpis();
 
   const types = ["Alle", ...Object.keys(byType)];
   document.getElementById("filter-bar").innerHTML = types.map(t => {
-    const count = t === "Alle" ? total : (byType[t] || 0);
+    const count = t === "Alle" ? allContacts.length : (byType[t] || 0);
     return `<button class="filter-btn ${t === activeFilter ? 'active' : ''}" onclick="setFilter('${t.replace(/'/g,"\\'")}')">${t} (${count})</button>`;
   }).join("");
 
@@ -481,8 +484,10 @@ function renderContactList(){
     list.innerHTML = '<div class="empty">Ingen henvendelser å vise</div>';
     return;
   }
-  list.innerHTML = filtered.map(c => `
-    <div class="contact-card">
+  list.innerHTML = filtered.map(c => {
+    const status = c.status || "ny";
+    return `
+    <div class="contact-card status-${status}" id="card-${c.id}">
       <div class="contact-head">
         <div>
           <div class="contact-name">${c.navn || "Ukjent"}${c.firma ? ` <span style="color:var(--muted); font-weight:400; font-size:15px;">— ${c.firma}</span>` : ""}</div>
@@ -494,8 +499,62 @@ function renderContactList(){
         ${c.epost ? `<a href="mailto:${c.epost}">${c.epost}</a>` : ""}
       </div>
       ${c.melding ? `<div class="contact-body">${c.melding}</div>` : ""}
+      <div class="status-row">
+        <span class="status-label">Status:</span>
+        <button class="status-btn ny ${status==='ny'?'active':''}" onclick="updateStatus('${c.id}','ny')">Ny</button>
+        <button class="status-btn kontaktet ${status==='kontaktet'?'active':''}" onclick="updateStatus('${c.id}','kontaktet')">Kontaktet</button>
+        <button class="status-btn ferdig ${status==='ferdig'?'active':''}" onclick="updateStatus('${c.id}','ferdig')">Ferdig</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+window.updateStatus = async function(id, newStatus){
+  const ok = await window.saveContactStatus(id, newStatus);
+  if(ok){
+    const c = allContacts.find(x => x.id === id);
+    if(c) c.status = newStatus;
+    renderContactList();
+    // update KPI cards for status counts
+    updateContactKpis();
+  } else {
+    alert("Kunne ikke lagre status. Sjekk at Firestore-reglene tillater update.");
+  }
+};
+
+function updateContactKpis(){
+  const weekAgo = new Date(Date.now() - 7*24*60*60*1000);
+  const inRange = (c) => {
+    const d = c.submittedAt && c.submittedAt.toDate ? c.submittedAt.toDate() : null;
+    return d && d > weekAgo;
+  };
+  const total = allContacts.length;
+  const weekCount = allContacts.filter(inRange).length;
+  const unanswered = allContacts.filter(c => (c.status || "ny") === "ny").length;
+  const inProgress = allContacts.filter(c => c.status === "kontaktet").length;
+
+  document.getElementById("contact-kpi-row").innerHTML = `
+    <div class="kpi">
+      <div class="kpi-label">Totalt</div>
+      <div class="kpi-value"><span>${total}</span></div>
+      <div class="kpi-sub">Alle henvendelser</div>
     </div>
-  `).join("");
+    <div class="kpi">
+      <div class="kpi-label">Ubesvart</div>
+      <div class="kpi-value"><span>${unanswered}</span></div>
+      <div class="kpi-sub">Krever oppfølging</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Kontaktet</div>
+      <div class="kpi-value"><span>${inProgress}</span></div>
+      <div class="kpi-sub">I dialog</div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-label">Siste 7 dager</div>
+      <div class="kpi-value"><span>${weekCount}</span></div>
+      <div class="kpi-sub">Nye denne uken</div>
+    </div>
+  `;
 }
 
 window.toggleDetail = function(i){
