@@ -706,17 +706,29 @@ function updateProgress(){
 }
 
 function buildPayload(){
+  const questionMap = {
+    q1: "1. Hvor mange minutter bruker du daglig på å lete etter verktøy eller utstyr?",
+    q2: "2. Hvor mye tid og energi koster det deg når utstyr ikke er der det skal være?",
+    q3: "3. Hvilke typer utstyr leter du oftest etter?",
+    q4: "4. Hvor nyttig tror du det ville vært å se hvor utstyret er i sanntid?",
+    q5: "5. Hvor ofte tror du at du hadde brukt en app som viser deg hvor utstyret ditt er?",
+    q6: "6. Hvor ofte oppstår det uenighet om hvem som sist hadde et verktøy?",
+    q7: "7. Hvor jobber du?"
+  };
+
+  const svar = {};
+  Object.keys(questionMap).forEach(qid => {
+    svar[qid] = {
+      sporsmal: questionMap[qid],
+      svar: answers[qid] || null
+    };
+  });
+
   return {
-    minutterLeting: answers.q1 || null,
-    kostnadVedManglendeUtstyr: answers.q2 || null,
-    utstyrstyper: answers.q3 || [],
-    nyttighetSanntid: answers.q4 || null,
-    bruksfrekvensApp: answers.q5 || null,
-    uenighetOmVerktoy: answers.q6 || null,
-    rolle: answers.q7 || null,
     navn: answers.q8 || null,
     kontakt: answers.q9 || null,
-    samtykke: answers.q10 === true
+    samtykke: answers.q10 === true,
+    svar: svar
   };
 }
 
