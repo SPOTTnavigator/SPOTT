@@ -80,6 +80,7 @@
   .nav-logo{
     font-size:24px; font-weight:800; letter-spacing:3px; color:var(--text);
     display:inline-flex; align-items:center; gap:0.02em;
+    text-decoration:none; cursor:pointer;
   }
   .nav-logo span{color:var(--orange);}
   .logo-radar{
@@ -282,7 +283,14 @@
   }
   .btn-qr:hover{border-color:var(--orange);}
 
-  .progress-bar{margin-bottom:36px;}
+  .progress-bar{
+    margin-bottom:36px;
+    position:sticky;
+    top:74px;
+    background:var(--bg);
+    padding:14px 0;
+    z-index:50;
+  }
   .progress-labels{
     display:flex; justify-content:space-between; font-size:11px; letter-spacing:1.5px;
     text-transform:uppercase; color:var(--muted-2); font-weight:700; margin-bottom:8px;
@@ -388,13 +396,13 @@
 <body>
 
 <nav>
-  <div class="nav-logo">SP<svg class="logo-radar" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+  <a href="#" class="nav-logo" onclick="window.scrollTo({top:0,behavior:'smooth'}); return false;">SP<svg class="logo-radar" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
     <circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.3"/>
     <circle cx="12" cy="12" r="7" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.5"/>
     <circle cx="12" cy="12" r="3.5" fill="none" stroke="currentColor" stroke-width="1.3" opacity="0.75"/>
     <circle cx="12" cy="12" r="1.5" fill="currentColor"/>
     <line class="logo-radar-sweep" x1="12" y1="12" x2="12" y2="1.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
-  </svg>TT</div>
+  </svg>TT</a>
   <div class="nav-right">
     <a href="#kontakt" class="nav-link">Kontakt</a>
     <a href="#survey" class="nav-cta">Delta i undersøkelsen</a>
@@ -593,7 +601,7 @@ const QUESTIONS = [
   { id:"q6", type:"scale", label:"Hvor ofte oppstår det uenighet om hvem som sist hadde et verktøy?",
     options:["Aldri","Sjelden","Av og til","Ofte","Svært ofte"] },
   { id:"q7", type:"select", label:"Hvor jobber du?",
-    options:["Tømrer/snekker","Elektriker","Rørlegger","Grunnarbeid","Anleggsledelse/formann","Prosjektleder","Annet"] },
+    options:["Tømrer/snekker","Elektriker","Rørlegger","Mekaniker","Grunnarbeid","Anleggsledelse/formann","Prosjektleder","Annet"] },
   { id:"q8", type:"name", label:"Navn" },
   { id:"q9", type:"contact", label:"Telefonnummer eller e-post" },
   { id:"q10", type:"consent", label:"Jeg bekrefter at jeg har svart på undersøkelsen på vegne av meg selv, og at navn og telefonnummer kan brukes til å verifisere svarene overfor investorer i forbindelse med PolarGrip AS / SPOTT." }
